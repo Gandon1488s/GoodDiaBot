@@ -1,0 +1,5 @@
+[phases.setup]
+nixPkgs = ["...", "zlib", "libjpeg", "libwebp"]
+
+[start]
+cmd = "python main.py"
