@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+bot.db
+bot_token.txt
+cryptobot_token.txt
+_check_*.py
+_fix_*.py
+_test_*.py
