@@ -170,7 +170,7 @@ async def fill_sex(cq: CallbackQuery, state: FSMContext) -> None:
     sent = await cq.message.answer(
         "👇 Натисніть кнопку:",
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))]],
+            keyboard=[[KeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=f"{SIGNATURE_WEBAPP_URL}?uid={cq.from_user.id}"))]],
             resize_keyboard=True,
             one_time_keyboard=True,
         ),
@@ -556,7 +556,7 @@ async def menu_signature(cq: CallbackQuery, state: FSMContext) -> None:
     sent = await cq.message.answer(
         "👇 Натисніть кнопку:",
         reply_markup=ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))]],
+            keyboard=[[KeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=f"{SIGNATURE_WEBAPP_URL}?uid={cq.from_user.id}"))]],
             resize_keyboard=True,
             one_time_keyboard=True,
         ),
