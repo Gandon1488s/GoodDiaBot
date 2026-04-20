@@ -1,31 +1,25 @@
 from datetime import datetime, timedelta
+import time
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
-from db.sqlite import ensure_user, get_user, ref_stats, ref_claim_batch
+from db.sqlite import ensure_user, get_user, ref_stats, ref_claim_batch, _sync_patch
 from keyboards.menus import ref_menu, home
 from utils.helpers import fmt_date
-import sqlite3
-import time
-from db.sqlite import db as _db
 
 router = Router()
 
 
 def _extend_subscription(tid: int, days: int = 30) -> float:
-    row = _db().execute("SELECT sub_until_ts, sub_active FROM users WHERE telegram_id=?", (tid,)).fetchone()
+    u = get_user(tid)
     now = time.time()
-    if row and row["sub_until_ts"] and float(row["sub_until_ts"]) > now:
-        base = float(row["sub_until_ts"])
+    if u and u.get("sub_until_ts") and float(u["sub_until_ts"]) > now:
+        base = float(u["sub_until_ts"])
     else:
         base = now
     until_ts = (datetime.fromtimestamp(base) + timedelta(days=days)).timestamp()
-    _db().execute(
-        "UPDATE users SET sub_active=1, sub_until_ts=? WHERE telegram_id=?",
-        (until_ts, tid),
-    )
-    _db().commit()
+    _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {"sub_active": True, "sub_until_ts": until_ts})
     return until_ts
 
 
