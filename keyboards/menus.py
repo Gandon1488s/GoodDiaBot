@@ -111,7 +111,7 @@ def auth_menu() -> InlineKeyboardMarkup:
 def about_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📣  Telegram-канал",      url="https://t.me/TSevenDia")],
-        [InlineKeyboardButton(text="⭐  Відгуки",             url="https://t.me/+2_NENys4fQQ4Zjdi")],
+        [InlineKeyboardButton(text="⭐  Відгуки",             url="https://t.me/+y789YRyl8U81NmUy")],
         [InlineKeyboardButton(text="💬  Чат спілкування T-seven", url="https://t.me/+kCO35ILadZ4wODdi")],
         [InlineKeyboardButton(text="🏠  Головне меню",        callback_data="menu_home")],
     ])
