@@ -65,6 +65,7 @@ def topup_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⭐  Зірками Telegram", callback_data="topup_stars")],
         [InlineKeyboardButton(text="🪙  Криптою (USDT)",   callback_data="topup_crypto")],
+        [InlineKeyboardButton(text="💳  Оплата карткою",   url="https://t.me/Tseven_menenger")],
         [InlineKeyboardButton(text="🏠  Головне меню",     callback_data="menu_home")],
     ])
 

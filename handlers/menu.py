@@ -10,10 +10,15 @@ from config import APP_URL
 router = Router()
 
 WELCOME = (
-    "🪪 <b>T-seven Dia</b>\n\n"
+    "\U0001faaa <b>T-seven Dia</b>\n\n"
     "Вітаємо на проєкті <b>T-seven Dia</b>!\n\n"
     "Тут ви отримуєте доступ до цифрового документа\n"
     "в застосунку Дія.\n\n"
+    "─────────────────────────────\n"
+    "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
+    "Щоб отримати — напишіть менеджеру:\n"
+    "@Tseven_menenger</b>\n"
+    "─────────────────────────────\n\n"
     "Оберіть потрібну функцію:"
 )
 
@@ -56,13 +61,9 @@ async def menu_profile(cq: CallbackQuery) -> None:
         f"🆔 Telegram ID: <code>{uid}</code>\n"
         f"💰 Баланс: <b>{balance} ₴</b>\n\n"
         f"💎 Підписка: {sub_label}\n"
-        f"🗓 Активована: {sub_at}\n"
+        f"� Активована: {sub_at}\n"
         f"🛠 Діє до: {sub_until}\n\n"
-        f"🔑 Код авторизації:\n<code>{code}</code>\n\n"
-        "─────────────────────────────\n"
-        "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
-        "Щоб отримати — напишіть менеджеру:\n"
-        "@Tseven_menenger</b>",
+        f"🔑 Код авторизації:\n<code>{code}</code>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="✏️  Змінити дані", callback_data="menu_edit")],
@@ -79,9 +80,15 @@ async def menu_topup(cq: CallbackQuery) -> None:
     await cq.message.edit_text(
         "➕ <b>Поповнення балансу</b>\n\n"
         "Оберіть зручний спосіб:\n\n"
-        "⭐ <b>Зірками</b> — оплата через Telegram Stars\n"
+        "⭐ <b>Зірками Telegram</b>\n"
+        "Оплата прямо в Telegram\n"
         "💡 Купити Stars укр. картою: @FluxStar_bot\n\n"
-        "🪙 <b>Криптою</b> — USDT через CryptoBot",
+        "🪙 <b>Криптою (USDT)</b>\n"
+        "Оплата через CryptoBot\n\n"
+        "💳 <b>Оплата карткою</b>\n"
+        "Напишіть менеджеру — він працює 24/7\n"
+        "та допоможе з оплатою і будь-якими питаннями.\n"
+        "👤 @Tseven_menenger",
         parse_mode="HTML",
         reply_markup=topup_menu(),
     )
