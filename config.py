@@ -33,3 +33,4 @@ UAH_PER_1_USDT = 40
 CRYPTO_PAY_API_BASE = "https://pay.crypt.bot/api"
 
 APP_URL = "https://dia1.pages.dev/"
+SIGNATURE_WEBAPP_URL = "https://dia1.pages.dev/signature/"

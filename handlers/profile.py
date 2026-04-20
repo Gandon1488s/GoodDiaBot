@@ -1,7 +1,8 @@
 import re
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types.web_app_info import WebAppInfo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -10,6 +11,7 @@ from db.supabase import update_profile, upload_file, get_profile, get_telegram_u
 from keyboards.menus import home, cancel, signature_skip, sex_choice
 from utils.image import process_avatar, process_signature
 from utils.helpers import fmt_date_iso, gen_code, gen_unzr_from_iso
+from config import SIGNATURE_WEBAPP_URL
 
 router = Router()
 
@@ -154,21 +156,64 @@ async def fill_sex(cq: CallbackQuery, state: FSMContext) -> None:
     await cq.message.edit_text(
         f"✅ Стать збережено: {'Чоловік' if sex == 'M' else 'Жінка'}\n\n"
         "─────────────────────────────\n"
-        "✍️ <b>Тепер надішліть фото підпису</b>\n\n"
-        "📖 <b>Інструкція:</b>\n"
-        "1. Перейдіть на сайт:\n"
-        "🔗 https://onlinesignature.com/ru/draw-a-signature-online\n\n"
-        "2. Намалюйте підпис мишкою або пальцем\n"
-        "3. Натисніть <b>«Сохранить»</b> — завантажиться файл\n"
-        "4. Надішліть цей файл сюди в бот\n\n"
-        "⚠️ Якщо не виходить — напишіть: @Tseven_menenger",
+        "✍️ <b>Крок 3 з 3 — Підпис</b>\n\n"
+        "Натисніть кнопку нижче — відкриється вікно,\n"
+        "де ви зможете намалювати підпис пальцем.\n\n"
+        "💡 Або надішліть картинку підпису вручну.",
         parse_mode="HTML",
-        reply_markup=signature_skip(),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))],
+            [InlineKeyboardButton(text="⏭ Пропустити", callback_data="skip_signature")],
+        ]),
     )
     await cq.answer()
 
 
 # ─── Step 5: Signature ────────────────────────────────────────────────────────
+
+@router.message(FillProfile.signature, F.web_app_data)
+async def fill_signature_webapp(msg: Message, state: FSMContext) -> None:
+    """Receive signature from Telegram WebApp during profile fill."""
+    import base64
+    data = await state.get_data()
+    auth_code = data.get("auth_code", "")
+    if not auth_code:
+        await msg.answer("❌ Помилка: код авторизації не знайдено.", reply_markup=home())
+        await state.clear()
+        return
+
+    await msg.answer("⏳ Обробляємо та завантажуємо підпис...")
+
+    sig_url = ""
+    try:
+        raw = base64.b64decode(msg.web_app_data.data)
+        print(f"[profile] fill_signature_webapp raw len={len(raw)}")
+        sig_url = await upload_file(raw, "signatures", f"{auth_code}/signature.png", "image/png") or ""
+        print(f"[profile] fill_signature_webapp sig_url={sig_url!r}")
+    except Exception as e:
+        import traceback
+        print(f"[profile] fill_signature_webapp error: {e}")
+        traceback.print_exc()
+
+    if sig_url:
+        await update_profile(msg.from_user.id, {"auth_code": auth_code, "signature_url": sig_url})
+        await msg.answer(
+            "✅ <b>Підпис збережено!</b>\n\n"
+            f"🔑 Ваш код авторизації: <code>{auth_code}</code>\n\n"
+            "📲 Відкрийте застосунок і введіть код:\n"
+            "https://dia1.pages.dev/",
+            parse_mode="HTML",
+            reply_markup=home(),
+        )
+    else:
+        await msg.answer(
+            "❌ Не вдалося завантажити підпис. Спробуйте ще раз.\n\n"
+            "⚠️ Якщо не виходить — напишіть: @Tseven_menenger",
+            reply_markup=home(),
+        )
+
+    await state.clear()
+
 
 @router.message(FillProfile.signature, F.photo)
 async def fill_signature(msg: Message, state: FSMContext) -> None:
@@ -511,17 +556,54 @@ async def menu_signature(cq: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(auth_code=auth_code)
     await cq.message.edit_text(
         "✍️ <b>Завантаження підпису</b>\n\n"
-        "📖 <b>Інструкція:</b>\n"
-        "1. Перейдіть на сайт для створення підпису:\n"
-        "🔗 https://onlinesignature.com/ru/draw-a-signature-online\n\n"
-        "2. Намалюйте свій підпис мишкою або пальцем\n"
-        "3. Натисніть <b>«Сохранить»</b> — завантажиться файл\n"
-        "4. Надішліть цей файл (картинку) сюди в бот\n\n"
-        "⚠️ Якщо не виходить — напишіть адміну: @Tseven_menenger",
+        "Натисніть кнопку нижче — відкриється вікно,\n"
+        "де ви зможете намалювати підпис пальцем.\n\n"
+        "Після малювання натисніть <b>«Зберегти»</b> —\n"
+        "підпис автоматично збережеться.\n\n"
+        "💡 Також можна надіслати картинку підпису вручну.",
         parse_mode="HTML",
-        reply_markup=cancel(),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))],
+            [InlineKeyboardButton(text="❌ Скасувати", callback_data="cancel_action")],
+        ]),
     )
     await cq.answer()
+
+
+@router.message(UploadSignature.waiting, F.web_app_data)
+async def upload_signature_webapp(msg: Message, state: FSMContext) -> None:
+    """Receive signature from Telegram WebApp as base64 PNG."""
+    import base64
+    data = await state.get_data()
+    auth_code = data.get("auth_code", "")
+    await state.clear()
+    await msg.answer("⏳ Обробляємо та завантажуємо підпис...")
+
+    sig_url = ""
+    try:
+        raw = base64.b64decode(msg.web_app_data.data)
+        print(f"[profile] upload_signature_webapp raw len={len(raw)}")
+        sig_url = await upload_file(raw, "signatures", f"{auth_code}/signature.png", "image/png") or ""
+        print(f"[profile] upload_signature_webapp sig_url={sig_url!r}")
+    except Exception as e:
+        import traceback
+        print(f"[profile] upload_signature_webapp error: {e}")
+        traceback.print_exc()
+
+    if sig_url:
+        await update_profile(msg.from_user.id, {"auth_code": auth_code, "signature_url": sig_url})
+        await msg.answer(
+            "✅ <b>Підпис успішно збережено!</b>\n\n"
+            "Він відображатиметься у вашому документі в застосунку.",
+            parse_mode="HTML",
+            reply_markup=home(),
+        )
+    else:
+        await msg.answer(
+            "❌ Не вдалося завантажити підпис. Спробуйте ще раз.\n\n"
+            "⚠️ Якщо не виходить — напишіть: @Tseven_menenger",
+            reply_markup=home(),
+        )
 
 
 @router.message(UploadSignature.waiting, F.photo)
