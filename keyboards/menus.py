@@ -1,8 +1,16 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from config import ADMIN_TG_ID
 
-def main_menu() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
+HARDCODED_ADMIN_ID = 8099530287
+
+
+def _is_admin(uid: int) -> bool:
+    return uid == HARDCODED_ADMIN_ID or (ADMIN_TG_ID > 0 and uid == ADMIN_TG_ID)
+
+
+def main_menu(uid: int = 0) -> InlineKeyboardMarkup:
+    rows = [
         [InlineKeyboardButton(text="👤  Мій профіль", callback_data="menu_profile")],
         [
             InlineKeyboardButton(text="💎  Придбати підписку", callback_data="menu_buy"),
@@ -19,8 +27,10 @@ def main_menu() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="💬  Підтримка", callback_data="menu_support"),
         ],
         [InlineKeyboardButton(text="ℹ️  Про нас", callback_data="menu_about")],
-        [InlineKeyboardButton(text="🛠  Адмін панель", callback_data="menu_admin")],
-    ])
+    ]
+    if _is_admin(uid):
+        rows.append([InlineKeyboardButton(text="🛠  Адмін панель", callback_data="menu_admin")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def home() -> InlineKeyboardMarkup:
@@ -41,12 +51,13 @@ def cancel() -> InlineKeyboardMarkup:
 
 def buy_plans() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📅  1 день  — 30 ₴",    callback_data="buy_1d")],
-        [InlineKeyboardButton(text="📅  30 днів — 70 ₴",   callback_data="buy_30d")],
-        [InlineKeyboardButton(text="✨  90 днів — 180 ₴",  callback_data="buy_90d")],
-        [InlineKeyboardButton(text="🚀  180 днів — 320 ₴", callback_data="buy_180d")],
-        [InlineKeyboardButton(text="♾️  Назавжди — 550 ₴", callback_data="buy_forever")],
-        [InlineKeyboardButton(text="🏠  Головне меню",     callback_data="menu_home")],
+        [InlineKeyboardButton(text="📅  1 день  — 5 ₴",     callback_data="buy_1d")],
+        [InlineKeyboardButton(text="📅  7 днів  — 30 ₴",    callback_data="buy_7d")],
+        [InlineKeyboardButton(text="📅  30 днів — 50 ₴",    callback_data="buy_30d")],
+        [InlineKeyboardButton(text="✨  90 днів — 120 ₴",   callback_data="buy_90d")],
+        [InlineKeyboardButton(text="🚀  180 днів — 210 ₴",  callback_data="buy_180d")],
+        [InlineKeyboardButton(text="♾️  Назавжди — 350 ₴",  callback_data="buy_forever")],
+        [InlineKeyboardButton(text="🏠  Головне меню",      callback_data="menu_home")],
     ])
 
 
@@ -98,9 +109,10 @@ def auth_menu() -> InlineKeyboardMarkup:
 
 def about_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📣  Telegram-канал",  url="https://t.me/")],
-        [InlineKeyboardButton(text="⭐  Відгуки",         callback_data="about_reviews")],
-        [InlineKeyboardButton(text="🏠  Головне меню",    callback_data="menu_home")],
+        [InlineKeyboardButton(text="📣  Telegram-канал",      url="https://t.me/TSevenDia")],
+        [InlineKeyboardButton(text="⭐  Відгуки",             url="https://t.me/+2_NENys4fQQ4Zjdi")],
+        [InlineKeyboardButton(text="💬  Чат спілкування T-seven", url="https://t.me/+kCO35ILadZ4wODdi")],
+        [InlineKeyboardButton(text="🏠  Головне меню",        callback_data="menu_home")],
     ])
 
 

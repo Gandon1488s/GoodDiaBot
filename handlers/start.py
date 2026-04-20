@@ -30,5 +30,5 @@ async def cmd_start(msg: Message) -> None:
         except Exception:
             pass
 
-    sent = await msg.answer(WELCOME, parse_mode="HTML", reply_markup=main_menu())
+    sent = await msg.answer(WELCOME, parse_mode="HTML", reply_markup=main_menu(uid))
     track_message(msg.chat.id, sent.message_id)

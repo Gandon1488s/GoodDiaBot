@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
 from db.sqlite import ensure_user, get_user, subscription_active, auth_code_get
@@ -22,7 +22,13 @@ WELCOME = (
 async def menu_home(cq: CallbackQuery, state: FSMContext) -> None:
     ensure_user(cq.from_user.id)
     await state.clear()
-    await cq.message.edit_text(WELCOME, parse_mode="HTML", reply_markup=main_menu())
+    # Remove any leftover reply keyboard (e.g. from signature WebApp)
+    try:
+        rm = await cq.message.answer("\u200b", reply_markup=ReplyKeyboardRemove())
+        await cq.bot.delete_message(cq.message.chat.id, rm.message_id)
+    except Exception:
+        pass
+    await cq.message.edit_text(WELCOME, parse_mode="HTML", reply_markup=main_menu(cq.from_user.id))
     await cq.answer()
 
 
@@ -52,7 +58,11 @@ async def menu_profile(cq: CallbackQuery) -> None:
         f"💎 Підписка: {sub_label}\n"
         f"🗓 Активована: {sub_at}\n"
         f"🛠 Діє до: {sub_until}\n\n"
-        f"🔑 Код авторизації:\n<code>{code}</code>",
+        f"🔑 Код авторизації:\n<code>{code}</code>\n\n"
+        "─────────────────────────────\n"
+        "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
+        "Щоб отримати — напишіть менеджеру:\n"
+        "@Tseven_menenger</b>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="✏️  Змінити дані", callback_data="menu_edit")],
@@ -126,25 +136,9 @@ async def menu_about(cq: CallbackQuery) -> None:
         "ℹ️ <b>Про нас</b>\n\n"
         "T-seven Dia — сервіс цифрових документів.\n\n"
         "📣 Підпишіться на канал — там новини та оновлення.\n"
-        "⭐ Перегляньте відгуки реальних користувачів.",
+        "⭐ Перегляньте відгуки реальних користувачів.\n"
+        "💬 Приєднуйтесь до чату спілкування!",
         parse_mode="HTML",
         reply_markup=about_menu(),
-    )
-    await cq.answer()
-
-
-@router.callback_query(F.data == "about_reviews")
-async def about_reviews(cq: CallbackQuery) -> None:
-    await cq.message.edit_text(
-        "⭐ <b>Відгуки користувачів</b>\n\n"
-        "Всі відгуки публічні — ви можете написати\n"
-        "будь-якій людині та переконатись особисто.\n\n"
-        "🔗 Канал з відгуками:",
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔗  Відкрити відгуки", url="https://t.me/")],
-            [InlineKeyboardButton(text="⬅️  Назад", callback_data="menu_about")],
-            [InlineKeyboardButton(text="🏠  Головне меню", callback_data="menu_home")],
-        ]),
     )
     await cq.answer()

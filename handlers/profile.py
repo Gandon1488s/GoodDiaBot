@@ -189,6 +189,13 @@ async def check_signature_fill(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     auth_code = data.get("auth_code", "")
 
+    # Remove reply keyboard
+    try:
+        rm = await cq.message.answer("⏳", reply_markup=ReplyKeyboardRemove())
+        await cq.bot.delete_message(cq.message.chat.id, rm.message_id)
+    except Exception:
+        pass
+
     profile = await get_profile(cq.from_user.id)
     sig_url = (profile or {}).get("signature_url", "") if profile else ""
 
@@ -588,6 +595,13 @@ async def check_signature_menu(cq: CallbackQuery, state: FSMContext) -> None:
     auth_code = data.get("auth_code", "")
     await state.clear()
 
+    # Remove reply keyboard
+    try:
+        rm = await cq.message.answer("⏳", reply_markup=ReplyKeyboardRemove())
+        await cq.bot.delete_message(cq.message.chat.id, rm.message_id)
+    except Exception:
+        pass
+
     profile = await get_profile(cq.from_user.id)
     sig_url = (profile or {}).get("signature_url", "") if profile else ""
 
@@ -649,6 +663,22 @@ async def upload_signature(msg: Message, state: FSMContext) -> None:
             "⚠️ Якщо не виходить — напишіть: @Tseven_menenger",
             reply_markup=home(),
         )
+
+
+@router.callback_query(F.data == "cancel_action")
+async def cancel_action(cq: CallbackQuery, state: FSMContext) -> None:
+    """Cancel current action, remove reply keyboard, go home."""
+    await state.clear()
+    try:
+        rm = await cq.message.answer("⏳", reply_markup=ReplyKeyboardRemove())
+        await cq.bot.delete_message(cq.message.chat.id, rm.message_id)
+    except Exception:
+        pass
+    await cq.message.edit_text(
+        "❌ Скасовано.\n\nПоверніться до головного меню.",
+        reply_markup=home(),
+    )
+    await cq.answer()
 
 
 @router.message(UploadSignature.waiting, F.document)
