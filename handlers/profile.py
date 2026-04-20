@@ -161,9 +161,11 @@ async def fill_sex(cq: CallbackQuery, state: FSMContext) -> None:
         "✍️ <b>Крок 3 з 3 — Підпис</b>\n\n"
         "Натисніть кнопку нижче — відкриється вікно,\n"
         "де ви зможете намалювати підпис пальцем.\n\n"
-        "💡 Або надішліть картинку підпису вручну.",
+        "💡 Або надішліть картинку підпису вручну.\n\n"
+        "✅ Після збереження натисніть <b>«Перевірити підпис»</b>.",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Перевірити підпис", callback_data="check_signature_fill")],
             [InlineKeyboardButton(text="⏭ Пропустити", callback_data="skip_signature")],
         ]),
     )
@@ -181,15 +183,18 @@ async def fill_sex(cq: CallbackQuery, state: FSMContext) -> None:
 
 # ─── Step 5: Signature ────────────────────────────────────────────────────────
 
-@router.message(FillProfile.signature, F.web_app_data)
-async def fill_signature_webapp(msg: Message, state: FSMContext) -> None:
-    """Receive confirmation from WebApp that signature was saved via API."""
+@router.callback_query(F.data == "check_signature_fill")
+async def check_signature_fill(cq: CallbackQuery, state: FSMContext) -> None:
+    """Check if signature was saved via WebApp API during profile fill."""
     data = await state.get_data()
     auth_code = data.get("auth_code", "")
-    await state.clear()
 
-    if msg.web_app_data.data == "signature_saved":
-        await msg.answer(
+    profile = await get_profile(cq.from_user.id)
+    sig_url = (profile or {}).get("signature_url", "") if profile else ""
+
+    if sig_url:
+        await state.clear()
+        await cq.message.edit_text(
             "✅ <b>Підпис збережено!</b>\n\n"
             f"🔑 Ваш код авторизації: <code>{auth_code}</code>\n\n"
             "📲 Відкрийте застосунок і введіть код:\n"
@@ -198,11 +203,17 @@ async def fill_signature_webapp(msg: Message, state: FSMContext) -> None:
             reply_markup=home(),
         )
     else:
-        await msg.answer(
-            "❌ Не вдалося завантажити підпис. Спробуйте ще раз.\n\n"
-            "⚠️ Якщо не виходить — напишіть: @Tseven_menenger",
-            reply_markup=home(),
+        await cq.message.edit_text(
+            "⏳ Підпис ще не знайдено.\n\n"
+            "Намалюйте підпис у вікні і натисніть «Зберегти».\n"
+            "Потім натисніть кнопку нижче ще раз.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Перевірити підпис", callback_data="check_signature_fill")],
+                [InlineKeyboardButton(text="⏭ Пропустити", callback_data="skip_signature")],
+            ]),
         )
+    await cq.answer()
 
 
 @router.message(FillProfile.signature, F.photo)
@@ -550,8 +561,13 @@ async def menu_signature(cq: CallbackQuery, state: FSMContext) -> None:
         "де ви зможете намалювати підпис пальцем.\n\n"
         "Після малювання натисніть <b>«Зберегти»</b> —\n"
         "підпис автоматично збережеться.\n\n"
-        "💡 Також можна надіслати картинку підпису вручну.",
+        "💡 Також можна надіслати картинку підпису вручну.\n\n"
+        "✅ Після збереження натисніть <b>«Перевірити підпис»</b>.",
         parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Перевірити підпис", callback_data="check_signature_menu")],
+            [InlineKeyboardButton(text="❌ Скасувати", callback_data="cancel_action")],
+        ]),
     )
     sent = await cq.message.answer(
         "👇 Натисніть кнопку:",
@@ -565,24 +581,35 @@ async def menu_signature(cq: CallbackQuery, state: FSMContext) -> None:
     await cq.answer()
 
 
-@router.message(UploadSignature.waiting, F.web_app_data)
-async def upload_signature_webapp(msg: Message, state: FSMContext) -> None:
-    """Receive confirmation from WebApp that signature was saved via API."""
+@router.callback_query(F.data == "check_signature_menu")
+async def check_signature_menu(cq: CallbackQuery, state: FSMContext) -> None:
+    """Check if signature was saved via WebApp API."""
+    data = await state.get_data()
+    auth_code = data.get("auth_code", "")
     await state.clear()
 
-    if msg.web_app_data.data == "signature_saved":
-        await msg.answer(
+    profile = await get_profile(cq.from_user.id)
+    sig_url = (profile or {}).get("signature_url", "") if profile else ""
+
+    if sig_url:
+        await cq.message.edit_text(
             "✅ <b>Підпис успішно збережено!</b>\n\n"
             "Він відображатиметься у вашому документі в застосунку.",
             parse_mode="HTML",
             reply_markup=home(),
         )
     else:
-        await msg.answer(
-            "❌ Не вдалося завантажити підпис. Спробуйте ще раз.\n\n"
-            "⚠️ Якщо не виходить — напишіть: @Tseven_menenger",
-            reply_markup=home(),
+        await cq.message.edit_text(
+            "⏳ Підпис ще не знайдено.\n\n"
+            "Намалюйте підпис у вікні і натисніть «Зберегти».\n"
+            "Потім натисніть кнопку нижче ще раз.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Перевірити підпис", callback_data="check_signature_menu")],
+                [InlineKeyboardButton(text="❌ Скасувати", callback_data="cancel_action")],
+            ]),
         )
+    await cq.answer()
 
 
 @router.message(UploadSignature.waiting, F.photo)
