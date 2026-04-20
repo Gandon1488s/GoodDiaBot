@@ -4,6 +4,7 @@ from aiogram.types import Message
 
 from db.sqlite import ensure_user, ref_register
 from keyboards.menus import main_menu
+from middleware.cleanup import track_message
 
 router = Router()
 
@@ -29,4 +30,5 @@ async def cmd_start(msg: Message) -> None:
         except Exception:
             pass
 
-    await msg.answer(WELCOME, parse_mode="HTML", reply_markup=main_menu())
+    sent = await msg.answer(WELCOME, parse_mode="HTML", reply_markup=main_menu())
+    track_message(msg.chat.id, sent.message_id)

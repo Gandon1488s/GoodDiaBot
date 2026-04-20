@@ -2,6 +2,7 @@ import re
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.types.web_app_info import WebAppInfo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -12,6 +13,7 @@ from keyboards.menus import home, cancel, signature_skip, sex_choice
 from utils.image import process_avatar, process_signature
 from utils.helpers import fmt_date_iso, gen_code, gen_unzr_from_iso
 from config import SIGNATURE_WEBAPP_URL
+from middleware.cleanup import track_message
 
 router = Router()
 
@@ -162,10 +164,18 @@ async def fill_sex(cq: CallbackQuery, state: FSMContext) -> None:
         "💡 Або надішліть картинку підпису вручну.",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))],
             [InlineKeyboardButton(text="⏭ Пропустити", callback_data="skip_signature")],
         ]),
     )
+    sent = await cq.message.answer(
+        "👇 Натисніть кнопку:",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        ),
+    )
+    track_message(cq.message.chat.id, sent.message_id)
     await cq.answer()
 
 
@@ -182,7 +192,7 @@ async def fill_signature_webapp(msg: Message, state: FSMContext) -> None:
         await state.clear()
         return
 
-    await msg.answer("⏳ Обробляємо та завантажуємо підпис...")
+    await msg.answer("⏳ Обробляємо та завантажуємо підпис...", reply_markup=ReplyKeyboardRemove())
 
     sig_url = ""
     try:
@@ -562,11 +572,16 @@ async def menu_signature(cq: CallbackQuery, state: FSMContext) -> None:
         "підпис автоматично збережеться.\n\n"
         "💡 Також можна надіслати картинку підпису вручну.",
         parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))],
-            [InlineKeyboardButton(text="❌ Скасувати", callback_data="cancel_action")],
-        ]),
     )
+    sent = await cq.message.answer(
+        "👇 Натисніть кнопку:",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="✍️ Намалювати підпис", web_app=WebAppInfo(url=SIGNATURE_WEBAPP_URL))]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        ),
+    )
+    track_message(cq.message.chat.id, sent.message_id)
     await cq.answer()
 
 
@@ -577,7 +592,7 @@ async def upload_signature_webapp(msg: Message, state: FSMContext) -> None:
     data = await state.get_data()
     auth_code = data.get("auth_code", "")
     await state.clear()
-    await msg.answer("⏳ Обробляємо та завантажуємо підпис...")
+    await msg.answer("⏳ Обробляємо та завантажуємо підпис...", reply_markup=ReplyKeyboardRemove())
 
     sig_url = ""
     try:
