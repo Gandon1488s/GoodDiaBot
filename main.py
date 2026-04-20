@@ -9,7 +9,7 @@ from aiogram.types import BotCommand
 
 from config import BOT_TOKEN
 from db.sqlite import init_db
-from middleware.cleanup import CleanupMiddleware
+from middleware.cleanup import MessageCleanupMiddleware, CallbackCleanupMiddleware
 
 from handlers import start, menu, subscription, payment_stars, payment_crypto, profile, auth_code, referral, admin
 
@@ -30,7 +30,8 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher(storage=MemoryStorage())
-    dp.message.middleware(CleanupMiddleware())
+    dp.message.middleware(MessageCleanupMiddleware())
+    dp.callback_query.middleware(CallbackCleanupMiddleware())
 
     dp.include_router(start.router)
     dp.include_router(menu.router)
