@@ -1,101 +1,105 @@
-import sqlite3
+"""Bot data storage — backed by Supabase (persistent across deploys).
+
+Drop-in replacement for the old SQLite module. All public function
+signatures stay the same so callers don't need changes.
+"""
 import time
-from pathlib import Path
+import httpx
 from datetime import datetime, timedelta
+from config import SUPABASE_URL, SUPABASE_KEY
 
-DB_PATH = Path(__file__).resolve().parent.parent / "bot.db"
-_DB: sqlite3.Connection | None = None
+_BASE = f"{SUPABASE_URL}/rest/v1"
 
 
-def db() -> sqlite3.Connection:
-    global _DB
-    if _DB is None:
-        _DB = sqlite3.connect(DB_PATH, check_same_thread=False)
-        _DB.row_factory = sqlite3.Row
-    return _DB
+def _h(prefer: str = "") -> dict:
+    h = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+    }
+    if prefer:
+        h["Prefer"] = prefer
+    return h
+
+
+def _sync_get(path: str, params: dict | None = None) -> list[dict]:
+    with httpx.Client(timeout=10) as c:
+        r = c.get(f"{_BASE}/{path}", headers=_h(), params=params or {})
+        return r.json() if r.status_code == 200 and r.text else []
+
+
+def _sync_post(path: str, data: dict, prefer: str = "return=representation") -> list[dict]:
+    with httpx.Client(timeout=10) as c:
+        r = c.post(f"{_BASE}/{path}", headers=_h(prefer), json=data)
+        if r.status_code in (200, 201):
+            return r.json() if r.text else []
+        print(f"[db] POST {path} error {r.status_code}: {r.text}")
+        return []
+
+
+def _sync_patch(path: str, params: dict, data: dict) -> bool:
+    with httpx.Client(timeout=10) as c:
+        r = c.patch(f"{_BASE}/{path}", headers=_h("return=representation"), params=params, json=data)
+        if r.status_code in (200, 204):
+            return True
+        print(f"[db] PATCH {path} error {r.status_code}: {r.text}")
+        return False
+
+
+def _sync_delete(path: str, params: dict) -> bool:
+    with httpx.Client(timeout=10) as c:
+        r = c.delete(f"{_BASE}/{path}", headers=_h(), params=params)
+        return r.status_code in (200, 204)
+
+
+def _sync_upsert(path: str, data: dict) -> bool:
+    with httpx.Client(timeout=10) as c:
+        r = c.post(
+            f"{_BASE}/{path}",
+            headers={**_h("return=representation"), "Prefer": "return=representation,resolution=merge-duplicates"},
+            json=data,
+        )
+        if r.status_code in (200, 201):
+            return True
+        print(f"[db] UPSERT {path} error {r.status_code}: {r.text}")
+        return False
 
 
 def init_db() -> None:
-    c = db()
-    c.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            telegram_id   INTEGER PRIMARY KEY,
-            balance_uah   INTEGER NOT NULL DEFAULT 0,
-            sub_active    INTEGER NOT NULL DEFAULT 0,
-            sub_until_ts  REAL,
-            sub_at_ts     REAL,
-            registered_at REAL NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS auth_codes (
-            telegram_id INTEGER PRIMARY KEY,
-            code        TEXT NOT NULL,
-            created_at  REAL NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS referrals (
-            invitee_id  INTEGER PRIMARY KEY,
-            inviter_id  INTEGER NOT NULL,
-            created_at  REAL NOT NULL,
-            paid_at     REAL
-        );
-
-        CREATE TABLE IF NOT EXISTS referral_stats (
-            inviter_id       INTEGER PRIMARY KEY,
-            registered_count INTEGER NOT NULL DEFAULT 0,
-            paid_count       INTEGER NOT NULL DEFAULT 0,
-            claimed_batches  INTEGER NOT NULL DEFAULT 0
-        );
-
-        CREATE TABLE IF NOT EXISTS crypto_pending (
-            invoice_id   INTEGER PRIMARY KEY,
-            uah_amount   INTEGER NOT NULL,
-            telegram_id  INTEGER NOT NULL,
-            created_at   REAL NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS crypto_paid (
-            invoice_id   INTEGER PRIMARY KEY,
-            uah_credited INTEGER NOT NULL,
-            telegram_id  INTEGER NOT NULL,
-            paid_at      REAL NOT NULL
-        );
-    """)
-    c.commit()
+    """No-op: tables are created via Supabase SQL Editor."""
+    pass
 
 
 # ─── Users ────────────────────────────────────────────────────────────────────
 
-def get_user(tid: int) -> sqlite3.Row | None:
-    return db().execute("SELECT * FROM users WHERE telegram_id=?", (tid,)).fetchone()
+def get_user(tid: int) -> dict | None:
+    rows = _sync_get("bot_users", {"telegram_id": f"eq.{tid}", "limit": "1"})
+    return rows[0] if rows else None
 
 
-def ensure_user(tid: int) -> sqlite3.Row:
+def ensure_user(tid: int) -> dict:
     u = get_user(tid)
     if u is None:
-        db().execute(
-            "INSERT INTO users (telegram_id, registered_at) VALUES (?, ?)",
-            (tid, time.time()),
-        )
-        db().commit()
+        _sync_post("bot_users", {"telegram_id": tid, "registered_at": time.time()})
         u = get_user(tid)
     return u
 
 
 def add_balance(tid: int, uah: int) -> int:
     ensure_user(tid)
-    db().execute("UPDATE users SET balance_uah = balance_uah + ? WHERE telegram_id=?", (uah, tid))
-    db().commit()
-    return int(db().execute("SELECT balance_uah FROM users WHERE telegram_id=?", (tid,)).fetchone()["balance_uah"])
+    u = get_user(tid)
+    new_balance = int(u.get("balance_uah", 0)) + uah
+    _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {"balance_uah": new_balance})
+    return new_balance
 
 
 def deduct_balance(tid: int, uah: int) -> bool:
     ensure_user(tid)
-    row = db().execute("SELECT balance_uah FROM users WHERE telegram_id=?", (tid,)).fetchone()
-    if not row or int(row["balance_uah"]) < uah:
+    u = get_user(tid)
+    cur = int(u.get("balance_uah", 0))
+    if cur < uah:
         return False
-    db().execute("UPDATE users SET balance_uah = balance_uah - ? WHERE telegram_id=?", (uah, tid))
-    db().commit()
+    _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {"balance_uah": cur - uah})
     return True
 
 
@@ -105,51 +109,41 @@ def activate_subscription(tid: int, days: int | None) -> float | None:
         until_ts = None
     else:
         until_ts = (datetime.fromtimestamp(now) + timedelta(days=days)).timestamp()
-    db().execute(
-        "UPDATE users SET sub_active=1, sub_at_ts=?, sub_until_ts=? WHERE telegram_id=?",
-        (now, until_ts, tid),
-    )
-    db().commit()
+    _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {
+        "sub_active": True,
+        "sub_at_ts": now,
+        "sub_until_ts": until_ts,
+    })
     return until_ts
 
 
 def subscription_active(tid: int) -> bool:
-    row = db().execute("SELECT sub_active, sub_until_ts FROM users WHERE telegram_id=?", (tid,)).fetchone()
-    if not row or not row["sub_active"]:
+    u = get_user(tid)
+    if not u or not u.get("sub_active"):
         return False
-    until = row["sub_until_ts"]
+    until = u.get("sub_until_ts")
     if until is None:
         return True
     if time.time() <= float(until):
         return True
-    db().execute("UPDATE users SET sub_active=0 WHERE telegram_id=?", (tid,))
-    db().commit()
+    _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {"sub_active": False})
     return False
 
 
 def revoke_subscription(tid: int) -> None:
-    db().execute(
-        "UPDATE users SET sub_active=0, sub_until_ts=NULL WHERE telegram_id=?",
-        (tid,),
-    )
-    db().execute("DELETE FROM auth_codes WHERE telegram_id=?", (tid,))
-    db().commit()
+    _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {"sub_active": False, "sub_until_ts": None})
+    _sync_delete("auth_codes", {"telegram_id": f"eq.{tid}"})
 
 
 # ─── Auth codes ───────────────────────────────────────────────────────────────
 
 def auth_code_set(tid: int, code: str) -> None:
-    db().execute(
-        "INSERT INTO auth_codes (telegram_id, code, created_at) VALUES (?,?,?) "
-        "ON CONFLICT(telegram_id) DO UPDATE SET code=excluded.code, created_at=excluded.created_at",
-        (tid, code, time.time()),
-    )
-    db().commit()
+    _sync_upsert("auth_codes", {"telegram_id": tid, "code": code, "created_at": time.time()})
 
 
 def auth_code_get(tid: int) -> str | None:
-    row = db().execute("SELECT code FROM auth_codes WHERE telegram_id=?", (tid,)).fetchone()
-    return str(row["code"]) if row else None
+    rows = _sync_get("auth_codes", {"telegram_id": f"eq.{tid}", "limit": "1"})
+    return str(rows[0]["code"]) if rows else None
 
 
 # ─── Referrals ────────────────────────────────────────────────────────────────
@@ -157,85 +151,69 @@ def auth_code_get(tid: int) -> str | None:
 def ref_register(inviter_id: int, invitee_id: int) -> None:
     if inviter_id == invitee_id:
         return
-    c = db()
-    c.execute(
-        "INSERT OR IGNORE INTO referrals (invitee_id, inviter_id, created_at) VALUES (?,?,?)",
-        (invitee_id, inviter_id, time.time()),
-    )
-    c.execute(
-        "INSERT INTO referral_stats (inviter_id, registered_count) VALUES (?,1) "
-        "ON CONFLICT(inviter_id) DO UPDATE SET registered_count=registered_count+1",
-        (inviter_id,),
-    )
-    c.commit()
+    # Insert referral (ignore if exists)
+    rows = _sync_get("referrals", {"invitee_id": f"eq.{invitee_id}", "limit": "1"})
+    if not rows:
+        _sync_post("referrals", {"invitee_id": invitee_id, "inviter_id": inviter_id, "created_at": time.time()})
+    # Upsert stats
+    stats_rows = _sync_get("referral_stats", {"inviter_id": f"eq.{inviter_id}", "limit": "1"})
+    if stats_rows:
+        cur = int(stats_rows[0].get("registered_count", 0))
+        _sync_patch("referral_stats", {"inviter_id": f"eq.{inviter_id}"}, {"registered_count": cur + 1})
+    else:
+        _sync_post("referral_stats", {"inviter_id": inviter_id, "registered_count": 1, "paid_count": 0, "claimed_batches": 0})
 
 
 def ref_mark_paid(invitee_id: int) -> int | None:
-    row = db().execute(
-        "SELECT inviter_id, paid_at FROM referrals WHERE invitee_id=?", (invitee_id,)
-    ).fetchone()
-    if not row or row["paid_at"] is not None:
+    rows = _sync_get("referrals", {"invitee_id": f"eq.{invitee_id}", "limit": "1"})
+    if not rows or rows[0].get("paid_at") is not None:
         return None
-    inviter_id = int(row["inviter_id"])
-    db().execute("UPDATE referrals SET paid_at=? WHERE invitee_id=?", (time.time(), invitee_id))
-    db().execute(
-        "INSERT INTO referral_stats (inviter_id, paid_count) VALUES (?,1) "
-        "ON CONFLICT(inviter_id) DO UPDATE SET paid_count=paid_count+1",
-        (inviter_id,),
-    )
-    db().commit()
+    inviter_id = int(rows[0]["inviter_id"])
+    _sync_patch("referrals", {"invitee_id": f"eq.{invitee_id}"}, {"paid_at": time.time()})
+    stats_rows = _sync_get("referral_stats", {"inviter_id": f"eq.{inviter_id}", "limit": "1"})
+    if stats_rows:
+        cur = int(stats_rows[0].get("paid_count", 0))
+        _sync_patch("referral_stats", {"inviter_id": f"eq.{inviter_id}"}, {"paid_count": cur + 1})
+    else:
+        _sync_post("referral_stats", {"inviter_id": inviter_id, "registered_count": 0, "paid_count": 1, "claimed_batches": 0})
     return inviter_id
 
 
 def ref_stats(inviter_id: int) -> tuple[int, int, int]:
-    row = db().execute(
-        "SELECT registered_count, paid_count, claimed_batches FROM referral_stats WHERE inviter_id=?",
-        (inviter_id,),
-    ).fetchone()
-    if not row:
+    rows = _sync_get("referral_stats", {"inviter_id": f"eq.{inviter_id}", "limit": "1"})
+    if not rows:
         return 0, 0, 0
-    return int(row["registered_count"]), int(row["paid_count"]), int(row["claimed_batches"])
+    r = rows[0]
+    return int(r.get("registered_count", 0)), int(r.get("paid_count", 0)), int(r.get("claimed_batches", 0))
 
 
 def ref_claim_batch(inviter_id: int) -> bool:
     _, paid, claimed = ref_stats(inviter_id)
     if paid // 3 <= claimed:
         return False
-    db().execute(
-        "UPDATE referral_stats SET claimed_batches=claimed_batches+1 WHERE inviter_id=?",
-        (inviter_id,),
-    )
-    db().commit()
+    _sync_patch("referral_stats", {"inviter_id": f"eq.{inviter_id}"}, {"claimed_batches": claimed + 1})
     return True
 
 
 # ─── Crypto invoices ──────────────────────────────────────────────────────────
 
 def crypto_pending_store(invoice_id: int, uah: int, tid: int) -> None:
-    db().execute(
-        "INSERT OR REPLACE INTO crypto_pending (invoice_id, uah_amount, telegram_id, created_at) VALUES (?,?,?,?)",
-        (invoice_id, uah, tid, time.time()),
-    )
-    db().commit()
+    _sync_upsert("crypto_pending", {"invoice_id": invoice_id, "uah_amount": uah, "telegram_id": tid, "created_at": time.time()})
 
 
 def crypto_pending_get(invoice_id: int) -> int | None:
-    row = db().execute("SELECT uah_amount FROM crypto_pending WHERE invoice_id=?", (invoice_id,)).fetchone()
-    return int(row["uah_amount"]) if row else None
+    rows = _sync_get("crypto_pending", {"invoice_id": f"eq.{invoice_id}", "limit": "1"})
+    return int(rows[0]["uah_amount"]) if rows else None
 
 
 def crypto_pending_delete(invoice_id: int) -> None:
-    db().execute("DELETE FROM crypto_pending WHERE invoice_id=?", (invoice_id,))
-    db().commit()
+    _sync_delete("crypto_pending", {"invoice_id": f"eq.{invoice_id}"})
 
 
 def crypto_is_paid(invoice_id: int) -> bool:
-    return db().execute("SELECT 1 FROM crypto_paid WHERE invoice_id=?", (invoice_id,)).fetchone() is not None
+    rows = _sync_get("crypto_paid", {"invoice_id": f"eq.{invoice_id}", "limit": "1"})
+    return bool(rows)
 
 
 def crypto_mark_paid(invoice_id: int, uah: int, tid: int) -> None:
-    db().execute(
-        "INSERT OR IGNORE INTO crypto_paid (invoice_id, uah_credited, telegram_id, paid_at) VALUES (?,?,?,?)",
-        (invoice_id, uah, tid, time.time()),
-    )
-    db().commit()
+    _sync_upsert("crypto_paid", {"invoice_id": invoice_id, "uah_credited": uah, "telegram_id": tid, "paid_at": time.time()})

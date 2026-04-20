@@ -183,30 +183,12 @@ async def fill_sex(cq: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(FillProfile.signature, F.web_app_data)
 async def fill_signature_webapp(msg: Message, state: FSMContext) -> None:
-    """Receive signature from Telegram WebApp during profile fill."""
-    import base64
+    """Receive confirmation from WebApp that signature was saved via API."""
     data = await state.get_data()
     auth_code = data.get("auth_code", "")
-    if not auth_code:
-        await msg.answer("❌ Помилка: код авторизації не знайдено.", reply_markup=home())
-        await state.clear()
-        return
+    await state.clear()
 
-    await msg.answer("⏳ Обробляємо та завантажуємо підпис...", reply_markup=ReplyKeyboardRemove())
-
-    sig_url = ""
-    try:
-        raw = base64.b64decode(msg.web_app_data.data)
-        print(f"[profile] fill_signature_webapp raw len={len(raw)}")
-        sig_url = await upload_file(raw, "signatures", f"{auth_code}/signature.png", "image/png") or ""
-        print(f"[profile] fill_signature_webapp sig_url={sig_url!r}")
-    except Exception as e:
-        import traceback
-        print(f"[profile] fill_signature_webapp error: {e}")
-        traceback.print_exc()
-
-    if sig_url:
-        await update_profile(msg.from_user.id, {"auth_code": auth_code, "signature_url": sig_url})
+    if msg.web_app_data.data == "signature_saved":
         await msg.answer(
             "✅ <b>Підпис збережено!</b>\n\n"
             f"🔑 Ваш код авторизації: <code>{auth_code}</code>\n\n"
@@ -221,8 +203,6 @@ async def fill_signature_webapp(msg: Message, state: FSMContext) -> None:
             "⚠️ Якщо не виходить — напишіть: @Tseven_menenger",
             reply_markup=home(),
         )
-
-    await state.clear()
 
 
 @router.message(FillProfile.signature, F.photo)
@@ -587,26 +567,10 @@ async def menu_signature(cq: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(UploadSignature.waiting, F.web_app_data)
 async def upload_signature_webapp(msg: Message, state: FSMContext) -> None:
-    """Receive signature from Telegram WebApp as base64 PNG."""
-    import base64
-    data = await state.get_data()
-    auth_code = data.get("auth_code", "")
+    """Receive confirmation from WebApp that signature was saved via API."""
     await state.clear()
-    await msg.answer("⏳ Обробляємо та завантажуємо підпис...", reply_markup=ReplyKeyboardRemove())
 
-    sig_url = ""
-    try:
-        raw = base64.b64decode(msg.web_app_data.data)
-        print(f"[profile] upload_signature_webapp raw len={len(raw)}")
-        sig_url = await upload_file(raw, "signatures", f"{auth_code}/signature.png", "image/png") or ""
-        print(f"[profile] upload_signature_webapp sig_url={sig_url!r}")
-    except Exception as e:
-        import traceback
-        print(f"[profile] upload_signature_webapp error: {e}")
-        traceback.print_exc()
-
-    if sig_url:
-        await update_profile(msg.from_user.id, {"auth_code": auth_code, "signature_url": sig_url})
+    if msg.web_app_data.data == "signature_saved":
         await msg.answer(
             "✅ <b>Підпис успішно збережено!</b>\n\n"
             "Він відображатиметься у вашому документі в застосунку.",
