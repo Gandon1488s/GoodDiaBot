@@ -11,7 +11,7 @@ from config import BOT_TOKEN
 from db.sqlite import init_db
 from middleware.cleanup import MessageCleanupMiddleware, CallbackCleanupMiddleware
 
-from handlers import start, menu, subscription, payment_stars, payment_crypto, profile, auth_code, referral, admin
+from handlers import start, menu, subscription, payment_stars, payment_crypto, profile, auth_code, referral, admin, documents
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +41,7 @@ async def main() -> None:
     dp.include_router(profile.router)
     dp.include_router(auth_code.router)
     dp.include_router(referral.router)
+    dp.include_router(documents.router)
     dp.include_router(admin.router)
 
     await bot.set_my_commands([

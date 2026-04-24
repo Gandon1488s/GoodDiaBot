@@ -22,6 +22,7 @@ def main_menu(uid: int = 0) -> InlineKeyboardMarkup:
         ],
         [InlineKeyboardButton(text="✏️  Змінити дані профілю", callback_data="menu_edit")],
         [InlineKeyboardButton(text="✍️  Завантажити підпис", callback_data="menu_signature")],
+        [InlineKeyboardButton(text="📂  Додати документи", callback_data="menu_docs")],
         [
             InlineKeyboardButton(text="🤝  Реферальна програма", callback_data="menu_ref"),
             InlineKeyboardButton(text="💬  Підтримка", callback_data="menu_support"),

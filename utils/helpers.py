@@ -28,6 +28,24 @@ def gen_document_number() -> str:
     return "0" + "".join(str(random.randint(0, 9)) for _ in range(8))
 
 
+def gen_license_number() -> str:
+    """Driver license number like 'СВА 123456'."""
+    ua_letters = "АВС"
+    prefix = "".join(random.choice(ua_letters) for _ in range(3))
+    digits = "".join(str(random.randint(0, 9)) for _ in range(6))
+    return f"{prefix} {digits}"
+
+
+def gen_license_dates() -> tuple[str, str]:
+    """Return (date_of_issue, date_of_expiry) for driver license in DD.MM.YYYY format.
+    Issue: random day in 2025, Expiry: +30 years."""
+    month = random.randint(1, 12)
+    day = random.randint(1, 28)
+    doi = f"{day:02d}.{month:02d}.2025"
+    exp = f"{day:02d}.{month:02d}.2055"
+    return doi, exp
+
+
 def gen_tax_number() -> str:
     """10 digits, first digit 3."""
     return "3" + "".join(str(random.randint(0, 9)) for _ in range(9))
