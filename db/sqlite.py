@@ -130,6 +130,26 @@ def subscription_active(tid: int) -> bool:
     return False
 
 
+def activate_subscription_minutes(tid: int, minutes: int) -> float:
+    now = time.time()
+    until_ts = now + minutes * 60
+    _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {
+        "sub_active": True,
+        "sub_at_ts": now,
+        "sub_until_ts": until_ts,
+    })
+    return until_ts
+
+
+def get_expired_subscriptions() -> list[dict]:
+    now = time.time()
+    rows = _sync_get("bot_users", {
+        "sub_active": "eq.true",
+        "sub_until_ts": f"not.is.null",
+    })
+    return [r for r in rows if r.get("sub_until_ts") is not None and float(r["sub_until_ts"]) < now]
+
+
 def revoke_subscription(tid: int) -> None:
     _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {"sub_active": False, "sub_until_ts": None})
     _sync_delete("auth_codes", {"telegram_id": f"eq.{tid}"})

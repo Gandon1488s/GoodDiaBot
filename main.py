@@ -8,7 +8,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
 from config import BOT_TOKEN
-from db.sqlite import init_db
+from db.sqlite import init_db, get_expired_subscriptions, revoke_subscription
+from db.supabase import clear_auth_code, upsert_telegram_user
 from middleware.cleanup import MessageCleanupMiddleware, CallbackCleanupMiddleware
 
 from handlers import start, menu, subscription, payment_stars, payment_crypto, profile, auth_code, referral, admin, documents
@@ -17,6 +18,32 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+
+async def _subscription_expiry_checker(bot: Bot) -> None:
+    """Background task: every 30s check for expired subs, revoke them and clear auth."""
+    while True:
+        try:
+            expired = get_expired_subscriptions()
+            for u in expired:
+                tid = int(u["telegram_id"])
+                logging.info(f"[expiry] Subscription expired for user {tid}")
+                revoke_subscription(tid)
+                await clear_auth_code(tid)
+                await upsert_telegram_user(tid, "", False, None)
+                try:
+                    await bot.send_message(
+                        chat_id=tid,
+                        text="⏰ <b>Ваша підписка закінчилась.</b>\n\n"
+                             "🔑 Код авторизації анульовано.\n"
+                             "Для продовження роботи оформіть нову підписку.",
+                        parse_mode="HTML",
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            logging.error(f"[expiry] Error: {e}")
+        await asyncio.sleep(30)
 
 
 async def main() -> None:
@@ -50,6 +77,10 @@ async def main() -> None:
 
     logging.info("Bot starting...")
     await bot.delete_webhook(drop_pending_updates=True)
+
+    asyncio.create_task(_subscription_expiry_checker(bot))
+    logging.info("Subscription expiry checker started (every 30s)")
+
     await dp.start_polling(bot)
 
 

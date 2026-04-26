@@ -129,6 +129,7 @@ def ref_menu(can_claim: bool) -> InlineKeyboardMarkup:
 def admin_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💰  Нарахувати баланс",   callback_data="admin_grant")],
+        [InlineKeyboardButton(text="🎁  Видати підписку",     callback_data="admin_sub")],
         [InlineKeyboardButton(text="🚫  Забрати підписку",    callback_data="admin_revoke")],
         [InlineKeyboardButton(text="🏠  Головне меню",        callback_data="menu_home")],
     ])
