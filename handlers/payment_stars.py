@@ -7,7 +7,10 @@ from keyboards.menus import stars_packages, home
 router = Router()
 
 PACKAGES = {
+    "stars_7":   7,
+    "stars_39":  39,
     "stars_50":  50,
+    "stars_65":  65,
     "stars_100": 100,
     "stars_200": 200,
     "stars_500": 500,

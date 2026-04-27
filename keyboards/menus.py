@@ -73,7 +73,10 @@ def topup_menu() -> InlineKeyboardMarkup:
 
 def stars_packages() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⭐  7 зірок   = 5 грн",   callback_data="stars_7")],
+        [InlineKeyboardButton(text="⭐  39 зірок  = 30 грн",  callback_data="stars_39")],
         [InlineKeyboardButton(text="⭐  50 зірок  = 39 грн",  callback_data="stars_50")],
+        [InlineKeyboardButton(text="⭐  65 зірок  = 50 грн",  callback_data="stars_65")],
         [InlineKeyboardButton(text="⭐  100 зірок = 78 грн",  callback_data="stars_100")],
         [InlineKeyboardButton(text="⭐  200 зірок = 156 грн", callback_data="stars_200")],
         [InlineKeyboardButton(text="⭐  500 зірок = 390 грн", callback_data="stars_500")],
