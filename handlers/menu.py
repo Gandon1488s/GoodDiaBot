@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from db.sqlite import ensure_user, get_user, subscription_active, auth_code_get
 from keyboards.menus import main_menu, home, about_menu, topup_menu
 from utils.helpers import fmt_dt, fmt_date
-from config import APP_URL
+from config import APP_URL, MANAGER, MANAGER2
 
 router = Router()
 
@@ -17,7 +17,7 @@ WELCOME = (
     "─────────────────────────────\n"
     "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
     "Щоб отримати — напишіть менеджеру:\n"
-    "@Tseven_menenger</b>\n"
+    f"{MANAGER} або {MANAGER2}</b>\n"
     "─────────────────────────────\n\n"
     "Оберіть потрібну функцію:"
 )
@@ -88,7 +88,8 @@ async def menu_topup(cq: CallbackQuery) -> None:
         "💳 <b>Оплата карткою</b>\n"
         "Напишіть менеджеру — він працює 24/7\n"
         "та допоможе з оплатою і будь-якими питаннями.\n"
-        "👤 @Tseven_menenger",
+        f"👤 {MANAGER}\n"
+        f"👤 {MANAGER2}",
         parse_mode="HTML",
         reply_markup=topup_menu(),
     )
@@ -127,10 +128,12 @@ async def menu_support(cq: CallbackQuery) -> None:
         "✅ Підключення та налаштування\n"
         "✅ Оплата / підписка / баланс\n"
         "✅ Будь-які питання по сервісу\n\n"
-        "👤 Менеджер: @Tseven_menenger",
+        f"👤 Менеджер: {MANAGER}\n"
+        f"👤 Менеджер: {MANAGER2}",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💬  Написати в підтримку", url="https://t.me/Tseven_menenger")],
+            [InlineKeyboardButton(text=f"💬  {MANAGER}", url=f"https://t.me/{MANAGER.lstrip('@')}")],
+            [InlineKeyboardButton(text=f"💬  {MANAGER2}", url=f"https://t.me/{MANAGER2.lstrip('@')}")],
             [InlineKeyboardButton(text="🏠  Головне меню", callback_data="menu_home")],
         ]),
     )

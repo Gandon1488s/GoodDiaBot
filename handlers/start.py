@@ -4,7 +4,7 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 
-from config import REQUIRED_CHANNELS
+from config import REQUIRED_CHANNELS, MANAGER, MANAGER2
 from db.sqlite import ensure_user, ref_register
 from keyboards.menus import main_menu
 from middleware.cleanup import track_message
@@ -20,7 +20,7 @@ WELCOME = (
     "─────────────────────────────\n"
     "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
     "Щоб отримати — напишіть менеджеру:\n"
-    "@Tseven_menenger</b>\n"
+    f"{MANAGER} або {MANAGER2}</b>\n"
     "─────────────────────────────\n\n"
     "Оберіть потрібну функцію:"
 )

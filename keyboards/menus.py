@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from config import ADMIN_TG_ID
+from config import ADMIN_TG_ID, MANAGER, MANAGER2
 
 HARDCODED_ADMIN_ID = 8099530287
 
@@ -66,7 +66,8 @@ def topup_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⭐  Зірками Telegram", callback_data="topup_stars")],
         [InlineKeyboardButton(text="🪙  Криптою (USDT)",   callback_data="topup_crypto")],
-        [InlineKeyboardButton(text="💳  Оплата карткою",   url="https://t.me/Tseven_menenger")],
+        [InlineKeyboardButton(text=f"💳  Оплата карткою ({MANAGER})", url=f"https://t.me/{MANAGER.lstrip('@')}")],
+        [InlineKeyboardButton(text=f"💳  Оплата карткою ({MANAGER2})", url=f"https://t.me/{MANAGER2.lstrip('@')}")],
         [InlineKeyboardButton(text="🏠  Головне меню",     callback_data="menu_home")],
     ])
 

@@ -35,6 +35,9 @@ CRYPTO_PAY_API_BASE = "https://pay.crypt.bot/api"
 APP_URL = "https://dia1.pages.dev/"
 SIGNATURE_WEBAPP_URL = "https://dia1.pages.dev/signature/"
 
+MANAGER = "@Tseven_menenger"
+MANAGER2 = "@Tseven_meneger2"
+
 # Обов'язкові канали для підписки
 REQUIRED_CHANNELS = [
     {"id": "@TSevenDia", "title": "📣 T-Seven Dia", "url": "https://t.me/TSevenDia"},
