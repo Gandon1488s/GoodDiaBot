@@ -4,7 +4,7 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 
-from config import REQUIRED_CHANNELS, MANAGER
+from config import REQUIRED_CHANNELS
 from db.sqlite import ensure_user, ref_register
 from keyboards.menus import main_menu
 from middleware.cleanup import track_message
@@ -15,12 +15,13 @@ log = logging.getLogger(__name__)
 WELCOME = (
     "\U0001faaa <b>T-seven Dia</b>\n\n"
     "Вітаємо на проєкті <b>T-seven Dia</b>!\n\n"
-    "Тут ви отримуєте доступ до цифрового документа\n"
-    "в застосунку Дія.\n\n"
+    "Ваш цифровий документ у застосунку Дія —\n"
+    "завжди під рукою, на будь-якому смартфоні.\n\n"
     "─────────────────────────────\n"
-    "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
-    "Щоб отримати — напишіть менеджеру:\n"
-    f"{MANAGER}</b>\n"
+    "📋 Оформлення за 2 хвилини\n"
+    "🔒 Безпечне зберігання даних\n"
+    "📲 Працює на iPhone та Android\n"
+    "💬 Підтримка 24/7\n"
     "─────────────────────────────\n\n"
     "Оберіть потрібну функцію:"
 )
