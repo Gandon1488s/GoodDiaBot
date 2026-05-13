@@ -19,6 +19,7 @@ PLANS = {
     "buy_1d":      (10,   1),
     "buy_7d":      (50,   7),
     "buy_30d":     (100,  30),
+    "buy_forever": (150,  None),
 }
 
 

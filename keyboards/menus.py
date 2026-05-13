@@ -54,7 +54,8 @@ def buy_plans() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📅  1 день  — 10 ₴",              callback_data="buy_1d")],
         [InlineKeyboardButton(text="📅  7 днів  — 50 ₴",              callback_data="buy_7d")],
-        [InlineKeyboardButton(text="�  30 днів — 1̶5̶0̶ ₴  100 ₴ 🔥",  callback_data="buy_30d")],
+        [InlineKeyboardButton(text="📅  30 днів — 100 ₴",             callback_data="buy_30d")],
+        [InlineKeyboardButton(text="♾️  Назавжди — 3̶2̶0̶ ₴  150 ₴ 🔥", callback_data="buy_forever")],
         [InlineKeyboardButton(text="🏠  Головне меню",                callback_data="menu_home")],
     ])
 
