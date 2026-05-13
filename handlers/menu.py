@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from db.sqlite import ensure_user, get_user, subscription_active, auth_code_get
 from keyboards.menus import main_menu, home, about_menu, topup_menu
 from utils.helpers import fmt_dt, fmt_date
-from config import APP_URL, MANAGER, MANAGER2
+from config import APP_URL, MANAGER, MANAGER2, MANAGER3
 
 router = Router()
 
@@ -17,7 +17,7 @@ WELCOME = (
     "─────────────────────────────\n"
     "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
     "Щоб отримати — напишіть менеджеру:\n"
-    f"{MANAGER} або {MANAGER2}</b>\n"
+    f"{MANAGER}</b>\n"
     "─────────────────────────────\n\n"
     "Оберіть потрібну функцію:"
 )
@@ -25,7 +25,7 @@ WELCOME = (
 
 @router.callback_query(F.data == "menu_home")
 async def menu_home(cq: CallbackQuery, state: FSMContext) -> None:
-    ensure_user(cq.from_user.id)
+    ensure_user(cq.from_user.id, cq.from_user.username or "")
     await state.clear()
     # Remove any leftover reply keyboard (e.g. from signature WebApp)
     try:
@@ -89,7 +89,8 @@ async def menu_topup(cq: CallbackQuery) -> None:
         "Напишіть менеджеру — він працює 24/7\n"
         "та допоможе з оплатою і будь-якими питаннями.\n"
         f"👤 {MANAGER}\n"
-        f"👤 {MANAGER2}",
+        f"👤 {MANAGER2}\n"
+        f"👤 {MANAGER3}",
         parse_mode="HTML",
         reply_markup=topup_menu(),
     )
@@ -129,11 +130,13 @@ async def menu_support(cq: CallbackQuery) -> None:
         "✅ Оплата / підписка / баланс\n"
         "✅ Будь-які питання по сервісу\n\n"
         f"👤 Менеджер: {MANAGER}\n"
-        f"👤 Менеджер: {MANAGER2}",
+        f"👤 Менеджер: {MANAGER2}\n"
+        f"👤 Менеджер: {MANAGER3}",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=f"💬  {MANAGER}", url=f"https://t.me/{MANAGER.lstrip('@')}")],
             [InlineKeyboardButton(text=f"💬  {MANAGER2}", url=f"https://t.me/{MANAGER2.lstrip('@')}")],
+            [InlineKeyboardButton(text=f"💬  {MANAGER3}", url=f"https://t.me/{MANAGER3.lstrip('@')}")],
             [InlineKeyboardButton(text="🏠  Головне меню", callback_data="menu_home")],
         ]),
     )

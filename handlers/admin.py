@@ -4,9 +4,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime, timedelta
 
-from config import ADMIN_TG_ID
+from config import ADMIN_TG_ID, ADMIN_TG_ID_2
 from db.sqlite import (
-    get_user, ensure_user, add_balance, revoke_subscription,
+    get_user, get_user_by_username, ensure_user, add_balance, revoke_subscription,
     activate_subscription, activate_subscription_minutes, auth_code_set,
 )
 from db.supabase import clear_auth_code, upsert_telegram_user, upsert_profile
@@ -34,7 +34,7 @@ HARDCODED_ADMIN_ID = 8099530287
 
 
 def _is_admin(uid: int) -> bool:
-    return uid == HARDCODED_ADMIN_ID or (ADMIN_TG_ID > 0 and uid == ADMIN_TG_ID)
+    return uid in (HARDCODED_ADMIN_ID, ADMIN_TG_ID_2) or (ADMIN_TG_ID > 0 and uid == ADMIN_TG_ID)
 
 
 @router.callback_query(F.data == "menu_admin")
@@ -46,6 +46,21 @@ async def menu_admin(cq: CallbackQuery) -> None:
     await cq.answer()
 
 
+async def _resolve_user(text: str, msg: Message) -> int | None:
+    """Resolve user from ID or @username. Returns telegram_id or None."""
+    if text.startswith("@"):
+        u = get_user_by_username(text)
+        if u:
+            return int(u["telegram_id"])
+        await msg.answer(f"❌ Користувача з юзернеймом <b>{text}</b> не знайдено в базі.", parse_mode="HTML")
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        await msg.answer("❌ Введіть числовий Telegram ID або @username:")
+        return None
+
+
 @router.callback_query(F.data == "admin_grant")
 async def admin_grant_start(cq: CallbackQuery, state: FSMContext) -> None:
     if not _is_admin(cq.from_user.id):
@@ -54,7 +69,7 @@ async def admin_grant_start(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(AdminFlow.target_id)
     await cq.message.edit_text(
         "💰 Нарахування балансу\n\n"
-        "Введіть Telegram ID користувача:",
+        "Введіть Telegram ID або @username користувача:",
         reply_markup=home(),
     )
     await cq.answer()
@@ -66,10 +81,8 @@ async def admin_grant_target(msg: Message, state: FSMContext) -> None:
         await state.clear()
         return
     text = (msg.text or "").strip()
-    try:
-        target_id = int(text)
-    except ValueError:
-        await msg.answer("❌ Введіть числовий Telegram ID:")
+    target_id = await _resolve_user(text, msg)
+    if target_id is None:
         return
 
     ensure_user(target_id)
@@ -146,7 +159,7 @@ async def admin_sub_start(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(GrantSubFlow.target_id)
     await cq.message.edit_text(
         "🎁 <b>Видати підписку</b>\n\n"
-        "Введіть Telegram ID користувача:",
+        "Введіть Telegram ID або @username користувача:",
         parse_mode="HTML",
         reply_markup=home(),
     )
@@ -159,10 +172,8 @@ async def admin_sub_target(msg: Message, state: FSMContext) -> None:
         await state.clear()
         return
     text = (msg.text or "").strip()
-    try:
-        target_id = int(text)
-    except ValueError:
-        await msg.answer("❌ Введіть числовий Telegram ID:")
+    target_id = await _resolve_user(text, msg)
+    if target_id is None:
         return
 
     ensure_user(target_id)
@@ -244,7 +255,7 @@ async def admin_revoke_start(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(RevokeFlow.target_id)
     await cq.message.edit_text(
         "🚫 <b>Забрати підписку</b>\n\n"
-        "Введіть Telegram ID користувача:",
+        "Введіть Telegram ID або @username користувача:",
         parse_mode="HTML",
         reply_markup=home(),
     )
@@ -257,10 +268,8 @@ async def admin_revoke_target(msg: Message, state: FSMContext) -> None:
         await state.clear()
         return
     text = (msg.text or "").strip()
-    try:
-        target_id = int(text)
-    except ValueError:
-        await msg.answer("❌ Введіть числовий Telegram ID:")
+    target_id = await _resolve_user(text, msg)
+    if target_id is None:
         return
 
     ensure_user(target_id)

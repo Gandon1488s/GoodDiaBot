@@ -1,12 +1,12 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from config import ADMIN_TG_ID, MANAGER, MANAGER2
+from config import ADMIN_TG_ID, ADMIN_TG_ID_2, MANAGER, MANAGER2, MANAGER3
 
 HARDCODED_ADMIN_ID = 8099530287
 
 
 def _is_admin(uid: int) -> bool:
-    return uid == HARDCODED_ADMIN_ID or (ADMIN_TG_ID > 0 and uid == ADMIN_TG_ID)
+    return uid in (HARDCODED_ADMIN_ID, ADMIN_TG_ID_2) or (ADMIN_TG_ID > 0 and uid == ADMIN_TG_ID)
 
 
 def main_menu(uid: int = 0) -> InlineKeyboardMarkup:
@@ -52,13 +52,10 @@ def cancel() -> InlineKeyboardMarkup:
 
 def buy_plans() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📅  1 день  — 5 ₴",     callback_data="buy_1d")],
-        [InlineKeyboardButton(text="📅  7 днів  — 30 ₴",    callback_data="buy_7d")],
-        [InlineKeyboardButton(text="📅  30 днів — 50 ₴",    callback_data="buy_30d")],
-        [InlineKeyboardButton(text="✨  90 днів — 120 ₴",   callback_data="buy_90d")],
-        [InlineKeyboardButton(text="🚀  180 днів — 210 ₴",  callback_data="buy_180d")],
-        [InlineKeyboardButton(text="♾️  Назавжди — 350 ₴",  callback_data="buy_forever")],
-        [InlineKeyboardButton(text="🏠  Головне меню",      callback_data="menu_home")],
+        [InlineKeyboardButton(text="📅  1 день  — 10 ₴",              callback_data="buy_1d")],
+        [InlineKeyboardButton(text="📅  7 днів  — 50 ₴",              callback_data="buy_7d")],
+        [InlineKeyboardButton(text="�  30 днів — 1̶5̶0̶ ₴  100 ₴ 🔥",  callback_data="buy_30d")],
+        [InlineKeyboardButton(text="🏠  Головне меню",                callback_data="menu_home")],
     ])
 
 
@@ -68,6 +65,7 @@ def topup_menu() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🪙  Криптою (USDT)",   callback_data="topup_crypto")],
         [InlineKeyboardButton(text=f"💳  Оплата карткою ({MANAGER})", url=f"https://t.me/{MANAGER.lstrip('@')}")],
         [InlineKeyboardButton(text=f"💳  Оплата карткою ({MANAGER2})", url=f"https://t.me/{MANAGER2.lstrip('@')}")],
+        [InlineKeyboardButton(text=f"💳  Оплата карткою ({MANAGER3})", url=f"https://t.me/{MANAGER3.lstrip('@')}")],
         [InlineKeyboardButton(text="🏠  Головне меню",     callback_data="menu_home")],
     ])
 

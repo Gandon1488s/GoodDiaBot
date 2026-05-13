@@ -16,12 +16,9 @@ from handlers.profile import FillProfile
 router = Router()
 
 PLANS = {
-    "buy_1d":      (5,   1),
-    "buy_7d":      (30,  7),
-    "buy_30d":     (50,  30),
-    "buy_90d":     (120, 90),
-    "buy_180d":    (210, 180),
-    "buy_forever": (350, None),
+    "buy_1d":      (10,   1),
+    "buy_7d":      (50,   7),
+    "buy_30d":     (100,  30),
 }
 
 

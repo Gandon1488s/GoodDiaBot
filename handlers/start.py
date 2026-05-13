@@ -4,7 +4,7 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 
-from config import REQUIRED_CHANNELS, MANAGER, MANAGER2
+from config import REQUIRED_CHANNELS, MANAGER
 from db.sqlite import ensure_user, ref_register
 from keyboards.menus import main_menu
 from middleware.cleanup import track_message
@@ -20,7 +20,7 @@ WELCOME = (
     "─────────────────────────────\n"
     "<b>🎁 Зараз ми даємо 50 підписок безкоштовно!\n"
     "Щоб отримати — напишіть менеджеру:\n"
-    f"{MANAGER} або {MANAGER2}</b>\n"
+    f"{MANAGER}</b>\n"
     "─────────────────────────────\n\n"
     "Оберіть потрібну функцію:"
 )
@@ -82,7 +82,7 @@ async def _cleanup_chat(msg: Message) -> None:
 async def cmd_start(msg: Message) -> None:
     uid = msg.from_user.id
     chat_id = msg.chat.id
-    ensure_user(uid)
+    ensure_user(uid, msg.from_user.username or "")
 
     args = msg.text.split() if msg.text else []
     if len(args) > 1 and args[1].startswith("ref_"):

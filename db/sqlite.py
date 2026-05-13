@@ -77,11 +77,25 @@ def get_user(tid: int) -> dict | None:
     return rows[0] if rows else None
 
 
-def ensure_user(tid: int) -> dict:
+def get_user_by_username(username: str) -> dict | None:
+    """Find user by @username (case-insensitive)."""
+    clean = username.lstrip("@").lower()
+    if not clean:
+        return None
+    rows = _sync_get("bot_users", {"username": f"ilike.{clean}", "limit": "1"})
+    return rows[0] if rows else None
+
+
+def ensure_user(tid: int, username: str = "") -> dict:
     u = get_user(tid)
     if u is None:
-        _sync_post("bot_users", {"telegram_id": tid, "registered_at": time.time()})
+        data = {"telegram_id": tid, "registered_at": time.time()}
+        if username:
+            data["username"] = username.lower()
+        _sync_post("bot_users", data)
         u = get_user(tid)
+    elif username and u.get("username", "") != username.lower():
+        _sync_patch("bot_users", {"telegram_id": f"eq.{tid}"}, {"username": username.lower()})
     return u
 
 
