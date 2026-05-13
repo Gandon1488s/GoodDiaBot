@@ -10,6 +10,21 @@ from config import SUPABASE_URL, SUPABASE_KEY
 
 _BASE = f"{SUPABASE_URL}/rest/v1"
 
+# ─── Persistent HTTP client (reuses TCP+TLS connections) ─────────────────────
+_client: httpx.Client | None = None
+
+
+def _get_client() -> httpx.Client:
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.Client(
+            base_url=_BASE,
+            timeout=10,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            http2=True,
+        )
+    return _client
+
 
 def _h(prefer: str = "") -> dict:
     h = {
@@ -23,46 +38,46 @@ def _h(prefer: str = "") -> dict:
 
 
 def _sync_get(path: str, params: dict | None = None) -> list[dict]:
-    with httpx.Client(timeout=10) as c:
-        r = c.get(f"{_BASE}/{path}", headers=_h(), params=params or {})
-        return r.json() if r.status_code == 200 and r.text else []
+    c = _get_client()
+    r = c.get(f"/{path}", headers=_h(), params=params or {})
+    return r.json() if r.status_code == 200 and r.text else []
 
 
 def _sync_post(path: str, data: dict, prefer: str = "return=representation") -> list[dict]:
-    with httpx.Client(timeout=10) as c:
-        r = c.post(f"{_BASE}/{path}", headers=_h(prefer), json=data)
-        if r.status_code in (200, 201):
-            return r.json() if r.text else []
-        print(f"[db] POST {path} error {r.status_code}: {r.text}")
-        return []
+    c = _get_client()
+    r = c.post(f"/{path}", headers=_h(prefer), json=data)
+    if r.status_code in (200, 201):
+        return r.json() if r.text else []
+    print(f"[db] POST {path} error {r.status_code}: {r.text}")
+    return []
 
 
 def _sync_patch(path: str, params: dict, data: dict) -> bool:
-    with httpx.Client(timeout=10) as c:
-        r = c.patch(f"{_BASE}/{path}", headers=_h("return=representation"), params=params, json=data)
-        if r.status_code in (200, 204):
-            return True
-        print(f"[db] PATCH {path} error {r.status_code}: {r.text}")
-        return False
+    c = _get_client()
+    r = c.patch(f"/{path}", headers=_h("return=representation"), params=params, json=data)
+    if r.status_code in (200, 204):
+        return True
+    print(f"[db] PATCH {path} error {r.status_code}: {r.text}")
+    return False
 
 
 def _sync_delete(path: str, params: dict) -> bool:
-    with httpx.Client(timeout=10) as c:
-        r = c.delete(f"{_BASE}/{path}", headers=_h(), params=params)
-        return r.status_code in (200, 204)
+    c = _get_client()
+    r = c.delete(f"/{path}", headers=_h(), params=params)
+    return r.status_code in (200, 204)
 
 
 def _sync_upsert(path: str, data: dict) -> bool:
-    with httpx.Client(timeout=10) as c:
-        r = c.post(
-            f"{_BASE}/{path}",
-            headers={**_h("return=representation"), "Prefer": "return=representation,resolution=merge-duplicates"},
-            json=data,
-        )
-        if r.status_code in (200, 201):
-            return True
-        print(f"[db] UPSERT {path} error {r.status_code}: {r.text}")
-        return False
+    c = _get_client()
+    r = c.post(
+        f"/{path}",
+        headers={**_h("return=representation"), "Prefer": "return=representation,resolution=merge-duplicates"},
+        json=data,
+    )
+    if r.status_code in (200, 201):
+        return True
+    print(f"[db] UPSERT {path} error {r.status_code}: {r.text}")
+    return False
 
 
 def init_db() -> None:

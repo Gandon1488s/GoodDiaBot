@@ -111,10 +111,15 @@ async def menu_install(cq: CallbackQuery) -> None:
         "2. Натисніть «Додати на головний екран»\n"
         "3. Відкрийте додаток з іконки\n\n"
         "💡 Після першого запуску перезапустіть\n"
-        "додаток для стабільної роботи.",
+        "додаток для стабільної роботи.\n\n"
+        "❓ Потрібна допомога з установкою?\n"
+        f"Напишіть: {MANAGER}",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📲  Відкрити посилання", url=APP_URL)],
+            [InlineKeyboardButton(text=f"💬  {MANAGER}", url=f"https://t.me/{MANAGER.lstrip('@')}")],
+            [InlineKeyboardButton(text=f"💬  {MANAGER2}", url=f"https://t.me/{MANAGER2.lstrip('@')}")],
+            [InlineKeyboardButton(text=f"💬  {MANAGER3}", url=f"https://t.me/{MANAGER3.lstrip('@')}")],
             [InlineKeyboardButton(text="🏠  Головне меню", callback_data="menu_home")],
         ]),
     )
