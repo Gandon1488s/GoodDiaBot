@@ -1,6 +1,6 @@
 ---
 title: DiiaTelegramBot
-emoji: 🇺🇦
+emoji: 🤖
 colorFrom: blue
 colorTo: yellow
 sdk: docker
