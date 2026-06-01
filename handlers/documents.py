@@ -19,6 +19,7 @@ router = Router()
 class LicenseFill(StatesGroup):
     photo = State()
     categories = State()
+    doi = State()
 
 
 # ─── Documents menu ─────────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ def license_menu(is_active: bool) -> InlineKeyboardMarkup:
         rows.append([InlineKeyboardButton(text="❌  Вимкнути", callback_data="license_off")])
         rows.append([InlineKeyboardButton(text="📷  Змінити фото", callback_data="license_edit_photo")])
         rows.append([InlineKeyboardButton(text="🏷  Змінити категорії", callback_data="license_edit_cat")])
+        rows.append([InlineKeyboardButton(text="📅  Змінити дату видачі", callback_data="license_edit_doi")])
     else:
         rows.append([InlineKeyboardButton(text="✅  Увімкнути", callback_data="license_on")])
     rows.append([InlineKeyboardButton(text="📂  Документи", callback_data="menu_docs")])
@@ -322,3 +324,60 @@ async def license_edit_cat(cq: CallbackQuery, state: FSMContext) -> None:
         ]),
     )
     await cq.answer()
+
+
+# ─── Edit date of issue (DOI) ──────────────────────────────────────────────────
+
+@router.callback_query(F.data == "license_edit_doi")
+async def license_edit_doi(cq: CallbackQuery, state: FSMContext) -> None:
+    code = auth_code_get(cq.from_user.id)
+    if not code:
+        await cq.answer("❌ Помилка", show_alert=True)
+        return
+
+    await state.set_state(LicenseFill.doi)
+    await state.update_data(auth_code=code)
+    await cq.message.edit_text(
+        "📅 <b>Нова дата видачі прав</b>\n\n"
+        "Введіть дату видачі у форматі <b>ДД.ММ.РРРР</b>\n"
+        "Приклад: <b>28.05.2023</b>\n\n"
+        "<i>Срок дії розраховується автоматично (+30 років).</i>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="❌  Скасувати", callback_data="doc_license")],
+        ]),
+    )
+    await cq.answer()
+
+
+@router.message(LicenseFill.doi, F.text)
+async def license_fill_doi(msg: Message, state: FSMContext) -> None:
+    text = (msg.text or "").strip()
+    if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", text):
+        await msg.answer(
+            "❌ Невірний формат. Введіть дату у форматі <b>ДД.ММ.РРРР</b>",
+            parse_mode="HTML",
+        )
+        return
+
+    data = await state.get_data()
+    auth_code = data.get("auth_code", "")
+
+    ok = await update_profile(msg.from_user.id, {
+        "auth_code": auth_code,
+        "license_doi": text,
+    })
+    await state.clear()
+
+    if ok:
+        sent = await msg.answer(
+            f"✅ Дату видачі прав оновлено: <b>{text}</b>",
+            parse_mode="HTML",
+            reply_markup=license_menu(True),
+        )
+    else:
+        sent = await msg.answer(
+            "❌ Помилка збереження. Спробуйте ще раз.",
+            reply_markup=home(),
+        )
+    track_message(msg.chat.id, sent.message_id)
