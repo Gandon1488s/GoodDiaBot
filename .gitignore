@@ -8,3 +8,4 @@ cryptobot_token.txt
 _check_*.py
 _fix_*.py
 _test_*.py
+backup_profiles.json

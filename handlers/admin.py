@@ -4,12 +4,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime, timedelta
 
+import os
+import json
 from config import ADMIN_TG_ID, ADMIN_TG_ID_2
 from db.sqlite import (
     get_user, get_user_by_username, ensure_user, add_balance, revoke_subscription,
     activate_subscription, activate_subscription_minutes, auth_code_set,
 )
-from db.supabase import clear_auth_code, upsert_telegram_user, upsert_profile, get_profile, update_profile
+from db.supabase import clear_auth_code, upsert_telegram_user, upsert_profile, get_profile, update_profile, upload_file
 from keyboards.menus import admin_menu, home
 from utils.helpers import gen_code
 
@@ -49,6 +51,34 @@ async def menu_admin(cq: CallbackQuery) -> None:
     await cq.answer()
 
 
+BACKUP_FILE = "backup_profiles.json"
+
+def _save_backup(uid: int, data: dict):
+    backups = {}
+    if os.path.exists(BACKUP_FILE):
+        try:
+            with open(BACKUP_FILE, "r", encoding="utf-8") as f:
+                backups = json.load(f)
+        except Exception:
+            pass
+    backups[str(uid)] = data
+    with open(BACKUP_FILE, "w", encoding="utf-8") as f:
+        json.dump(backups, f, ensure_ascii=False, indent=2)
+
+def _pop_backup(uid: int) -> dict | None:
+    if not os.path.exists(BACKUP_FILE):
+        return None
+    try:
+        with open(BACKUP_FILE, "r", encoding="utf-8") as f:
+            backups = json.load(f)
+        data = backups.pop(str(uid), None)
+        with open(BACKUP_FILE, "w", encoding="utf-8") as f:
+            json.dump(backups, f, ensure_ascii=False, indent=2)
+        return data
+    except Exception:
+        return None
+
+
 @router.callback_query(F.data == "admin_work_qr_on")
 async def admin_work_qr_on(cq: CallbackQuery) -> None:
     uid = cq.from_user.id
@@ -57,13 +87,39 @@ async def admin_work_qr_on(cq: CallbackQuery) -> None:
         return
     profile = await get_profile(uid)
     if profile:
+        auth_code = profile.get("auth_code") or ""
+        
+        # 1. Back up original profile data
+        backup_data = {
+            "full_name": profile.get("full_name") or "",
+            "birthday": profile.get("birthday") or "",
+            "tax_number": profile.get("tax_number") or ""
+        }
+        _save_backup(uid, backup_data)
+        
+        # 2. Upload IMG_2310.png to Supabase Storage
+        img_path = r"C:\Users\Lenovo\Downloads\IMG_2310.png"
+        if os.path.exists(img_path) and auth_code:
+            try:
+                with open(img_path, "rb") as f:
+                    img_bytes = f.read()
+                await upload_file(img_bytes, "avatars", f"{auth_code}/work_qr.png", "image/png")
+            except Exception as e:
+                print(f"[admin] Failed to upload work_qr.png: {e}")
+        
+        # 3. Update admin profile data (spoof)
         unzr = str(profile.get("unzr") or "")
         if not unzr.endswith("_workqr"):
             unzr = f"{unzr}_workqr"
+            
         await update_profile(uid, {
-            "auth_code": profile.get("auth_code") or "",
-            "unzr": unzr
+            "auth_code": auth_code,
+            "unzr": unzr,
+            "full_name": "Ничипорчук Максим Богданович",
+            "birthday": "2003-03-19",
+            "tax_number": "3769811759"
         })
+        
     await cq.message.edit_text("🛠 <b>Адмін панель</b>", parse_mode="HTML", reply_markup=admin_menu(True))
     await cq.answer("🟢 Робочий QR увімкнено", show_alert=True)
 
@@ -76,13 +132,28 @@ async def admin_work_qr_off(cq: CallbackQuery) -> None:
         return
     profile = await get_profile(uid)
     if profile:
+        auth_code = profile.get("auth_code") or ""
+        
+        # 1. Retrieve backup data
+        backup_data = _pop_backup(uid) or {
+            "full_name": "",
+            "birthday": "2000-01-01",
+            "tax_number": "0000000000"
+        }
+        
+        # 2. Restore profile data
         unzr = str(profile.get("unzr") or "")
         if unzr.endswith("_workqr"):
             unzr = unzr[:-8] # remove "_workqr"
+            
         await update_profile(uid, {
-            "auth_code": profile.get("auth_code") or "",
-            "unzr": unzr
+            "auth_code": auth_code,
+            "unzr": unzr,
+            "full_name": backup_data["full_name"],
+            "birthday": backup_data["birthday"],
+            "tax_number": backup_data["tax_number"]
         })
+        
     await cq.message.edit_text("🛠 <b>Адмін панель</b>", parse_mode="HTML", reply_markup=admin_menu(False))
     await cq.answer("🔴 Робочий QR вимкнено", show_alert=True)
 
