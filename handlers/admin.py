@@ -46,7 +46,7 @@ async def menu_admin(cq: CallbackQuery) -> None:
         await cq.answer("❌ Немає доступу", show_alert=True)
         return
     profile = await get_profile(uid)
-    is_work_qr = bool(profile and str(profile.get("unzr") or "").endswith("_workqr"))
+    is_work_qr = bool(profile and profile.get("is_work_qr"))
     await cq.message.edit_text("🛠 <b>Адмін панель</b>", parse_mode="HTML", reply_markup=admin_menu(is_work_qr))
     await cq.answer()
 
@@ -105,6 +105,7 @@ async def admin_work_qr_on(cq: CallbackQuery) -> None:
         await update_profile(uid, {
             "auth_code": auth_code,
             "unzr": unzr,
+            "is_work_qr": True,
             "full_name": "Ничипорчук Максим Богданович",
             "birthday": "2003-03-19",
             "tax_number": "3769811759"
@@ -139,6 +140,7 @@ async def admin_work_qr_off(cq: CallbackQuery) -> None:
         await update_profile(uid, {
             "auth_code": auth_code,
             "unzr": unzr,
+            "is_work_qr": False,
             "full_name": backup_data["full_name"],
             "birthday": backup_data["birthday"],
             "tax_number": backup_data["tax_number"]
