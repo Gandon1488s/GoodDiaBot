@@ -97,17 +97,7 @@ async def admin_work_qr_on(cq: CallbackQuery) -> None:
         }
         _save_backup(uid, backup_data)
         
-        # 2. Upload IMG_2310.png to Supabase Storage
-        img_path = r"C:\Users\Lenovo\Downloads\IMG_2310.png"
-        if os.path.exists(img_path) and auth_code:
-            try:
-                with open(img_path, "rb") as f:
-                    img_bytes = f.read()
-                await upload_file(img_bytes, "avatars", f"{auth_code}/work_qr.png", "image/png")
-            except Exception as e:
-                print(f"[admin] Failed to upload work_qr.png: {e}")
-        
-        # 3. Update admin profile data (spoof)
+        # 2. Update admin profile data (spoof)
         unzr = str(profile.get("unzr") or "")
         if not unzr.endswith("_workqr"):
             unzr = f"{unzr}_workqr"
