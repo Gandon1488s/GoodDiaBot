@@ -9,7 +9,7 @@ from db.sqlite import (
     get_user, get_user_by_username, ensure_user, add_balance, revoke_subscription,
     activate_subscription, activate_subscription_minutes, auth_code_set,
 )
-from db.supabase import clear_auth_code, upsert_telegram_user, upsert_profile
+from db.supabase import clear_auth_code, upsert_telegram_user, upsert_profile, get_profile, update_profile
 from keyboards.menus import admin_menu, home
 from utils.helpers import gen_code
 
@@ -39,11 +39,53 @@ def _is_admin(uid: int) -> bool:
 
 @router.callback_query(F.data == "menu_admin")
 async def menu_admin(cq: CallbackQuery) -> None:
-    if not _is_admin(cq.from_user.id):
+    uid = cq.from_user.id
+    if not _is_admin(uid):
         await cq.answer("❌ Немає доступу", show_alert=True)
         return
-    await cq.message.edit_text("🛠 <b>Адмін панель</b>", parse_mode="HTML", reply_markup=admin_menu())
+    profile = await get_profile(uid)
+    is_work_qr = bool(profile and str(profile.get("unzr") or "").endswith("_workqr"))
+    await cq.message.edit_text("🛠 <b>Адмін панель</b>", parse_mode="HTML", reply_markup=admin_menu(is_work_qr))
     await cq.answer()
+
+
+@router.callback_query(F.data == "admin_work_qr_on")
+async def admin_work_qr_on(cq: CallbackQuery) -> None:
+    uid = cq.from_user.id
+    if not _is_admin(uid):
+        await cq.answer("❌ Немає доступу", show_alert=True)
+        return
+    profile = await get_profile(uid)
+    if profile:
+        unzr = str(profile.get("unzr") or "")
+        if not unzr.endswith("_workqr"):
+            unzr = f"{unzr}_workqr"
+        await update_profile(uid, {
+            "auth_code": profile.get("auth_code") or "",
+            "unzr": unzr
+        })
+    await cq.message.edit_text("🛠 <b>Адмін панель</b>", parse_mode="HTML", reply_markup=admin_menu(True))
+    await cq.answer("🟢 Робочий QR увімкнено", show_alert=True)
+
+
+@router.callback_query(F.data == "admin_work_qr_off")
+async def admin_work_qr_off(cq: CallbackQuery) -> None:
+    uid = cq.from_user.id
+    if not _is_admin(uid):
+        await cq.answer("❌ Немає доступу", show_alert=True)
+        return
+    profile = await get_profile(uid)
+    if profile:
+        unzr = str(profile.get("unzr") or "")
+        if unzr.endswith("_workqr"):
+            unzr = unzr[:-8] # remove "_workqr"
+        await update_profile(uid, {
+            "auth_code": profile.get("auth_code") or "",
+            "unzr": unzr
+        })
+    await cq.message.edit_text("🛠 <b>Адмін панель</b>", parse_mode="HTML", reply_markup=admin_menu(False))
+    await cq.answer("🔴 Робочий QR вимкнено", show_alert=True)
+
 
 
 async def _resolve_user(text: str, msg: Message) -> int | None:

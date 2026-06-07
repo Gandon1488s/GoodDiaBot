@@ -129,10 +129,13 @@ def ref_menu(can_claim: bool) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def admin_menu() -> InlineKeyboardMarkup:
+def admin_menu(is_work_qr: bool = False) -> InlineKeyboardMarkup:
+    qr_text = "🔴  Вимкнути робочий QR" if is_work_qr else "🟢  Увімкнути робочий QR"
+    qr_callback = "admin_work_qr_off" if is_work_qr else "admin_work_qr_on"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💰  Нарахувати баланс",   callback_data="admin_grant")],
         [InlineKeyboardButton(text="🎁  Видати підписку",     callback_data="admin_sub")],
         [InlineKeyboardButton(text="🚫  Забрати підписку",    callback_data="admin_revoke")],
+        [InlineKeyboardButton(text=qr_text,                  callback_data=qr_callback)],
         [InlineKeyboardButton(text="🏠  Головне меню",        callback_data="menu_home")],
     ])
